@@ -183,4 +183,89 @@ class TransactionListingTest extends TestCase
         $this->dontSee('Unlisted transaction');
         $this->see('Today listed transaction');
     }
+
+    /** @test */
+    public function user_can_see_transaction_list_with_sorting_by_date()
+    {
+        $user = $this->loginAsUser();
+        $book = factory(Book::class)->create();
+
+        $transactions = factory(Transaction::class)->createMany([
+            [
+                'date' => today()->subDays()->format('Y-m-d'),
+                'description' => 'Subday Transaction',
+                'book_id' => $book->id,
+                'creator_id' => $user->id,
+            ], [
+                'date' => today()->format('Y-m-d'),
+                'description' => 'Today Transaction',
+                'book_id' => $book->id,
+                'creator_id' => $user->id,
+            ]
+        ]);
+
+        $this->visitRoute('transactions.index', ['sort' => 'date', 'order' => 'desc']);
+        $this->seeInElement('tbody tr:nth-child(1) td:nth-child(2)', $transactions->last()->date_only.'-'.$transactions->last()->month_name);
+
+        $this->visitRoute('transactions.index', ['sort' => 'date', 'order' => 'asc']);
+        $this->seeInElement('tbody tr:nth-child(1) td:nth-child(2)', $transactions->first()->date_only.'-'.$transactions->first()->month_name);
+    }
+
+    /** @test */
+    public function user_can_see_transaction_list_with_sorting_by_description()
+    {
+        $user = $this->loginAsUser();
+        $book = factory(Book::class)->create();
+
+        factory(Transaction::class)->createMany([
+            [
+                'date' => today()->subDays()->format('Y-m-d'),
+                'description' => 'Subday Transaction',
+                'book_id' => $book->id,
+                'creator_id' => $user->id,
+            ], [
+                'date' => today()->format('Y-m-d'),
+                'description' => 'Today Transaction',
+                'book_id' => $book->id,
+                'creator_id' => $user->id,
+            ]
+        ]);
+
+        $this->visitRoute('transactions.index', ['sort' => 'description', 'order' => 'desc']);
+        $this->seeInElement('tbody tr:nth-child(1) td:nth-child(3)', 'Today Transaction');
+
+        $this->visitRoute('transactions.index', ['sort' => 'description', 'order' => 'asc']);
+        $this->seeInElement('tbody tr:nth-child(1) td:nth-child(3)', 'Subday Transaction');
+    }
+
+    /** @test */
+    public function user_can_see_transaction_list_with_sorting_by_amount()
+    {
+        $user = $this->loginAsUser();
+        $book = factory(Book::class)->create();
+
+        factory(Transaction::class)->createMany([
+            [
+                'date' => today()->format('Y-m-d'),
+                'amount' => 100000,
+                'in_out' => 1, // 0:spending, 1:income
+                'description' => 'Today Transaction',
+                'book_id' => $book->id,
+                'creator_id' => $user->id,
+            ], [
+                'date' => today()->format('Y-m-d'),
+                'amount' => 99,
+                'in_out' => 1, // 0:spending, 1:income
+                'description' => 'Today Transaction',
+                'book_id' => $book->id,
+                'creator_id' => $user->id,
+            ]
+        ]);
+
+        $this->visitRoute('transactions.index', ['sort' => 'amount', 'order' => 'desc']);
+        $this->seeInElement('tbody tr:nth-child(1) td:nth-child(4)', '100.000,00');
+
+        $this->visitRoute('transactions.index', ['sort' => 'amount', 'order' => 'asc']);
+        $this->seeInElement('tbody tr:nth-child(1) td:nth-child(4)', '99,00');
+    }
 }

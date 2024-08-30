@@ -26,27 +26,68 @@
             </div>
             @desktop
             <div class="table-responsive-sm">
-                <table class="table table-sm table-hover table-bordered mb-0">
+                <table class="table mb-0 table-sm table-hover table-bordered">
                     <thead>
                         <tr>
                             <th class="text-center">{{ __('app.table_no') }}</th>
-                            <th class="text-center">{{ __('app.date') }}</th>
-                            <th>{{ __('transaction.description') }}</th>
-                            <th class="text-right">{{ __('transaction.amount') }}</th>
+                            <th class="text-center">
+                                {{ link_to_route(
+                                    'transactions.index',
+                                    __('app.date'),
+                                    [
+                                        'date' => request('date'),
+                                        'month' => request('month'),
+                                        'year' => request('year'),
+                                        'category_id' => request('category_id'),
+                                        'sort' => 'date',
+                                        'order' => request('order') === 'asc' ? 'desc' : 'asc'
+                                    ]
+                                ) }}
+                                {!! request('sort') === 'date' && request('order') === 'asc' ? '<i class="fe fe-arrow-down"></i>' : '<i class="fe fe-arrow-up"></i>' !!}
+                            </th>
+                            <th>
+                                {{ link_to_route(
+                                    'transactions.index',
+                                    __('transaction.description'),
+                                    [
+                                        'date' => request('date'),
+                                        'month' => request('month'),
+                                        'year' => request('year'),
+                                        'category_id' => request('category_id'),
+                                        'sort' => 'description',
+                                        'order' => request('order') === 'asc' ? 'desc' : 'asc']
+                                    ,
+                                ) }}
+                                {!! request('sort') === 'description' && request('order') === 'asc' ? '<i class="fe fe-arrow-down"></i>' : '<i class="fe fe-arrow-up"></i>' !!}
+                            <th class="text-right">
+                                {{ link_to_route(
+                                    'transactions.index',
+                                    __('transaction.amount'),
+                                    [
+                                        'date' => request('date'),
+                                        'month' => request('month'),
+                                        'year' => request('year'),
+                                        'category_id' => request('category_id'),
+                                        'sort' => 'amount',
+                                        'order' => request('order') === 'asc' ? 'desc' : 'asc']
+                                    ,
+                                ) }}
+                                {!! request('sort') === 'amount' && request('order') === 'asc' ? '<i class="fe fe-arrow-down"></i>' : '<i class="fe fe-arrow-up"></i>' !!}
+                            </th>
                             <th class="text-center">{{ __('app.action') }}</th>
                         </tr>
                     </thead>
                     <tbody>
-                        @forelse ($transactions as $key => $transaction)
                         @php
-                            $groups = $transactions->where('date_only', $transaction->date_only);
-                            $firstGroup = $groups->first();
-                            $groupCount = $groups->count();
+                            $counter = 0;
                         @endphp
-                        <tr>
-                            <td class="text-center">{{ 1 + $key }}</td>
-                            @if ($firstGroup->id == $transaction->id)
-                                <td class="text-center text-middle" rowspan="{{ $groupCount }}">
+
+                        @foreach ($transactions->groupBy('date_only') as $transactions)
+                            @forelse ($transactions as $key => $transaction)
+                            <tr>
+                                <td class="text-center">{{ ++$counter }}</td>
+                                @if ($loop->first)
+                                <td class="text-center text-middle" rowspan="{{ $transactions->count() }}">
                                     {{ $transaction->day_name }},
                                     {{ link_to_route('transactions.index', $transaction->date_only.'-'.$transaction->month_name, [
                                         'date' => $transaction->date_only,
@@ -55,42 +96,43 @@
                                         'category_id' => request('category_id'),
                                     ]) }}
                                 </td>
-                            @endif
-                            <td>
-                                <span class="float-right">
-                                    <span class="badge {{ $transaction->bankAccount->exists ? 'bg-purple' : 'bg-gray'}}">
-                                        {{ $transaction->bankAccount->name }}
+                                @endif
+                                <td>
+                                    <span class="float-right">
+                                        <span class="badge {{ $transaction->bankAccount->exists ? 'bg-purple' : 'bg-gray'}}">
+                                            {{ $transaction->bankAccount->name }}
+                                        </span>
+                                        @if ($transaction->category)
+                                            @php
+                                                $categoryRoute = route('categories.show', [
+                                                    $transaction->category_id,
+                                                    'start_date' => $startDate,
+                                                    'end_date' => $year.'-'.$month.'-'.date('t'),
+                                                ]);
+                                            @endphp
+                                            <a href="{{ $categoryRoute }}">{!! optional($transaction->category)->name_label !!}</a>
+                                        @endif
                                     </span>
-                                    @if ($transaction->category)
-                                        @php
-                                            $categoryRoute = route('categories.show', [
-                                                $transaction->category_id,
-                                                'start_date' => $startDate,
-                                                'end_date' => $year.'-'.$month.'-'.date('t'),
-                                            ]);
-                                        @endphp
-                                        <a href="{{ $categoryRoute }}">{!! optional($transaction->category)->name_label !!}</a>
-                                    @endif
-                                </span>
-                                {{ $transaction->description }}
-                            </td>
-                            <td class="text-right">{{ $transaction->amount_string }}</td>
-                            <td class="text-center">
-                                @can('update', $transaction)
-                                    @can('manage-transactions', auth()->activeBook())
-                                        {!! link_to_route(
-                                            'transactions.index',
-                                            __('app.edit'),
-                                            ['action' => 'edit', 'id' => $transaction->id] + request(['month', 'year', 'query', 'category_id']),
-                                            ['id' => 'edit-transaction-'.$transaction->id]
-                                        ) !!}
+                                    {{ $transaction->description }}
+                                </td>
+                                <td class="text-right">{{ $transaction->amount_string }}</td>
+                                <td class="text-center">
+                                    @can('update', $transaction)
+                                        @can('manage-transactions', auth()->activeBook())
+                                            {!! link_to_route(
+                                                'transactions.index',
+                                                __('app.edit'),
+                                                ['action' => 'edit', 'id' => $transaction->id] + request(['month', 'year', 'query', 'category_id']),
+                                                ['id' => 'edit-transaction-'.$transaction->id]
+                                            ) !!}
+                                        @endcan
                                     @endcan
-                                @endcan
-                            </td>
-                        </tr>
-                        @empty
-                        <tr><td colspan="5">{{ __('transaction.not_found') }}</td></tr>
-                        @endforelse
+                                </td>
+                            </tr>
+                            @empty
+                            <tr><td colspan="5">{{ __('transaction.not_found') }}</td></tr>
+                            @endforelse
+                        @endforeach
                     </tbody>
                     @if (request('category_id') || request('book_id'))
                     <tfoot>
@@ -156,7 +198,7 @@
             @elsedesktop
             <div class="card-body">
                 @foreach ($transactions->groupBy('date') as $groupedTransactions)
-                    <h5 class="text-center mb-0">{{ $groupedTransactions->first()->day_name }}</h5>
+                    <h5 class="mb-0 text-center">{{ $groupedTransactions->first()->day_name }}</h5>
                     @foreach ($groupedTransactions as $date => $transaction)
                         @include('transactions.partials.single_transaction_mobile', ['transaction' => $transaction, 'month' => $month, 'year' => $year])
                     @endforeach

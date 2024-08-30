@@ -3,13 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\Book;
+use App\Transaction;
 use App\Models\Category;
 use App\Models\Lecturing;
-use App\Transaction;
-use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Foundation\Bus\DispatchesJobs;
-use Illuminate\Foundation\Validation\ValidatesRequests;
 use Illuminate\Routing\Controller as BaseController;
+use Illuminate\Foundation\Validation\ValidatesRequests;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
 class Controller extends BaseController
 {
@@ -69,6 +70,8 @@ class Controller extends BaseController
             }
         });
 
+        $this->querySortingData($transactionQuery);
+
         return $transactionQuery->orderBy('date', 'asc')->with('category', 'bankAccount', 'book')->get();
     }
 
@@ -106,7 +109,23 @@ class Controller extends BaseController
             }
         });
 
+        $this->querySortingData($transactionQuery);
+
         return $transactionQuery->orderBy('date', 'asc')->with('category', 'book')->get();
+    }
+
+    protected function querySortingData(Builder $model)
+    {
+        $sort = request('sort');
+        $order = request('order');
+
+        return $model->when($sort, function ($queryBuilder, $sort) use ($order) {
+            if($sort == 'amount') {
+                $queryBuilder->orderBy('in_out',  $order);
+            }
+
+            $queryBuilder->orderBy($sort, $order);
+        });
     }
 
     protected function getIncomeTotal($transactions)
